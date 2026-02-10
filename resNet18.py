@@ -185,22 +185,33 @@ if __name__ == "__main__":
 
     model = ResNet18(num_classes=len(class_names)).to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4) # This actually trains the model forwarding or optimizing process.
 
     # ========================================================
-    # Sanity Training (1 batch)
+    # Training model: epoch 20
     # ========================================================
-    model.train()
-    imgs, labels = next(iter(train_loader))
-    imgs, labels = imgs.to(device), labels.to(device)
+    EPOCHS = 6
 
-    optimizer.zero_grad()
-    outputs = model(imgs)
-    loss = criterion(outputs, labels)
-    loss.backward()
-    optimizer.step()
+    for epoch in range(EPOCHS):
 
-    print("Sanity loss:", loss.item())
+        model.train()
+        running_loss = 0
+
+        for imgs, labels in train_loader:
+            imgs, labels = imgs.to(device), labels.to(device)
+
+            optimizer.zero_grad()
+            outputs = model(imgs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+
+        print(f"Epoch {epoch+1}, Loss: {running_loss/len(train_loader):.4f}")
+
+
+    print("Sanity loss:", loss.item()) # Loss: how wrong is the model's predicion?
 
     # ========================================================
     # Test Accuracy
