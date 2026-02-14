@@ -11,6 +11,10 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import matplotlib.pyplot as plt
+# For Final result plotting
+from sklearn.metrics import classification_report, precision_recall_fscore_support
+import time
+
 
 # ============================================================
 # 1. Device
@@ -226,6 +230,80 @@ if __name__ == "__main__":
             total += labels.size(0)
 
     print(f"Test Accuracy: {100*correct/total:.2f}%")
+
+    # ========================================================
+    # Classification Report (Pretty Format)
+    # ========================================================
+    model.eval()
+    all_preds = []
+    all_labels = []
+    
+    start_time = time.time()
+    with torch.no_grad():
+        for imgs, labels in test_loader:
+            imgs = imgs.to(device)
+            outputs = model(imgs)
+            preds = outputs.argmax(dim=1).cpu().numpy()
+            all_preds.extend(preds)
+            all_labels.extend(labels.numpy())
+    end_time = time.time()
+    
+    # sklearn metrics
+    report = classification_report(
+        all_labels,
+        all_preds,
+        target_names=class_names,
+        digits=4
+    )
+    
+    precision, recall, f1, support = precision_recall_fscore_support(
+        all_labels,
+        all_preds,
+        average=None
+    )
+    
+    macro_p, macro_r, macro_f, _ = precision_recall_fscore_support(
+        all_labels,
+        all_preds,
+        average="macro"
+    )
+    
+    accuracy = sum(p == l for p, l in zip(all_preds, all_labels)) / len(all_labels)
+    avg_inference_time = (end_time - start_time) * 1000 / len(test_loader)
+    
+    total_params = sum(p.numel() for p in model.parameters())
+    model_size_mb = total_params * 4 / (1024 ** 2)
+    
+    # ========================================================
+    # PRINT FORMATTED REPORT
+    # ========================================================
+    print("\n" + "="*60)
+    print("ResNet18 - Classification Report")
+    print("="*60)
+    print(report)
+    
+    print("\n" + "="*60)
+    print("Per-Class Metrics Summary")
+    print("="*60)
+    print(f"{'Class':<15}{'Precision':<13}{'Recall':<13}{'F1-Score':<13}{'Support':<10}")
+    print("-"*60)
+    
+    for i, cls in enumerate(class_names):
+        print(f"{cls:<15}{precision[i]:<13.4f}{recall[i]:<13.4f}{f1[i]:<13.4f}{support[i]:<10}")
+    
+    print("-"*60)
+    print(f"{'Average':<15}{macro_p:<13.4f}{macro_r:<13.4f}{macro_f:<13.4f}")
+    
+    print("\n" + "="*60)
+    print("ResNet18 - Final Results Summary")
+    print("="*60)
+    print(f"Test Accuracy: {accuracy*100:.2f}%")
+    print(f"Average Inference Time: {avg_inference_time:.2f} ms/batch")
+    print(f"Total Parameters: {total_params:,}")
+    print(f"Model Size: {model_size_mb:.2f} MB")
+    print("="*60)
+
+    
 
     # ========================================================
     # Visualization (GT vs PR)
